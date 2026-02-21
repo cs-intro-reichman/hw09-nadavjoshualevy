@@ -33,19 +33,60 @@ public class LanguageModel {
 
     /** Builds a language model from the text in the given file (the corpus). */
 	public void train(String fileName) {
-		// Your code goes here
-	}
+    String window = "";
+    char c;
+    In in = new In(fileName);
+    for (int i = 0; i < windowLength; i++) {
+        char tempChar = in.readChar();
+        window += tempChar;
+    }
+    while (!in.isEmpty()) {
+        c = in.readChar();
+        List probs = CharDataMap.get(window);
+        if (probs == null) {
+            probs = new List();
+            CharDataMap.put(window, probs);
+        }
+        probs.update(c);
+        window = window.substring(1) + c;
+    }
+    for (List probs : CharDataMap.values()) {
+        calculateProbabilities(probs);
+    }
+}
 
     // Computes and sets the probabilities (p and cp fields) of all the
 	// characters in the given list. */
-	void calculateProbabilities(List probs) {				
-		// Your code goes here
+	void calculateProbabilities(List probs) {	
+        Node start = probs.getNodeF();			
+		ListIterator itr = new ListIterator(start);
+        int total = 0;
+        while (itr.hasNext()) {
+            CharData cd = itr.next();
+            total += cd.count;
+        }
+        ListIterator itr2 = new ListIterator(start);
+        double cp = 0.0;
+        while (itr2.hasNext()) {
+            CharData cc = itr2.next();
+            cc.p =( ((double)(1.0/total))* cc.count);
+            cc.cp = cc.p +cp;
+            cp = cc.cp;
+        }
+
+
 	}
 
     // Returns a random character from the given probabilities list.
 	char getRandomChar(List probs) {
-		// Your code goes here
-		return ' ';
+	
+        double r = this.randomGenerator.nextDouble();
+        ListIterator itr = new ListIterator(probs.getNodeF());
+        while (itr.hasNext()) {
+            CharData cd =itr.next();
+            if (cd.cp >= r){return cd.chr;}
+        }
+		return 0;
 	}
 
     /**
@@ -56,9 +97,33 @@ public class LanguageModel {
 	 * @return the generated text
 	 */
 	public String generate(String initialText, int textLength) {
-		// Your code goes here
-        return "";
-	}
+		if (initialText.length() < this.windowLength) {
+        return initialText;
+    }
+
+    StringBuilder generatedText = new StringBuilder(initialText);
+    
+    String currentWindow = initialText.substring(initialText.length() - this.windowLength);
+
+    
+    for (int i = 0; i < textLength; i++) {
+        List probs = CharDataMap.get(currentWindow);
+        
+        
+        if (probs == null) {
+            break; 
+        }
+        
+        char nextChar = getRandomChar(probs);
+        generatedText.append(nextChar);
+        
+        currentWindow = currentWindow.substring(1) + nextChar;
+    }
+
+    return generatedText.toString();
+}
+       
+	
 
     /** Returns a string representing the map of this language model. */
 	public String toString() {
@@ -69,8 +134,5 @@ public class LanguageModel {
 		}
 		return str.toString();
 	}
-
-    public static void main(String[] args) {
-		// Your code goes here
     }
-}
+  
